@@ -1,9 +1,31 @@
+/* 1. check the second endpoint, the response must contain the question arr 
+// 2. (second endpoint) the request is the format:
+        {
+            userAnswers: { 
+                'questionId': "index", 
+                'questionId2': "index", 
+                ...
+            }
+        }
+
+        NOT 
+        {
+            'questionId1': "index", 
+            'questionId2': "index", 
+            ...
+        }
+
+        make sure you get the userAnswers object right 
+*/
 const express = require('express')
 const mongo = require('mongodb')
 const app = express()
 const rawData = require('./data')
 const Attempt = require('./model/Attempt')
+const cors = require("cors")
+
 app.use(express.json())
+app.use(cors())
 
 const DB_NAME = "wpr-quiz";
 const DB_URL = `mongodb://localhost:27017/${DB_NAME}`
@@ -89,6 +111,8 @@ app.post("/attempts/:id/submit", async (req, res) => {
     const attemptId = req.params.id
     const userSubmit = req.body
 
+    const userAnswers = userSubmit.userAnswers;
+
     const attempt = await db.collection("attempts").findOne({ _id: new mongo.ObjectId(attemptId) })
 
     let score = 0;
@@ -97,9 +121,9 @@ app.post("/attempts/:id/submit", async (req, res) => {
 
     if (!attempt.completed) {
         // grade the user answers
-        for (const questionId of Object.keys(userSubmit)) {
+        for (const questionId of Object.keys(userAnswers)) {
 
-            const userAnswer = userSubmit[questionId]
+            const userAnswer = userAnswers[questionId]
             const correctAnswer = correctAnswers[questionId]
 
             if (userAnswer == correctAnswer) {
@@ -113,7 +137,7 @@ app.post("/attempts/:id/submit", async (req, res) => {
     }
 
     // set the score text
-    let scoreText = "Practice more to improve it :D”";
+    let scoreText = "Practice more to improve it :D";
     if (score >= 9) {
         scoreText = "Perfect"
     } else if (score >= 7) {
@@ -124,8 +148,9 @@ app.post("/attempts/:id/submit", async (req, res) => {
 
     const response = {
         _id: attemptId,
+        questions: createResponse(attempt).questions,
         startedAt: attempt.startedAt,
-        userAnswers: userSubmit,
+        userAnswers: userAnswers,
         correctAnswers: correctAnswers,
         score: score,
         scoreText: scoreText,
@@ -146,5 +171,5 @@ function getAllCorrectAnswers(questions) {
 }
 
 app.listen(3000, () => {
-    console.log("app is listening on port 5000");
+    console.log("app is listening on port 3000");
 })
